@@ -75,9 +75,21 @@ SWARM_SECONDS=120 npm run test:mp                 # 10 players + 6 spectators ov
 ## Run the backend behind Cloudflare Tunnel
 
 Run one PM2 instance of `server/node.js` on loopback. Preserve the public hostname in
-the tunnel and route only `/api/*` and `/ws` to Node. Set `TRUST_CLOUDFLARE_TUNNEL=1`
+the tunnel and route `/api/*`, `/ws`, and `/stats` to Node. Set `TRUST_CLOUDFLARE_TUNNEL=1`
 when cloudflared is the trusted local ingress. Node then uses Cloudflare's forwarded
 scheme for secure account cookies and the client IP for rate limiting.
+
+For `overrun.316123.nl`, the assets-only Worker `overrun-316123` serves the frontend.
+The dedicated tunnel forwards `^/(api/.*|ws|stats)$` to `http://127.0.0.1:8791`.
+Worker route exceptions (routes with no script) must cover `overrun.316123.nl/api/*`,
+`overrun.316123.nl/ws*`, and `overrun.316123.nl/stats`, ahead of the static Worker's
+`overrun.316123.nl/*` route. Both the exception and the tunnel rule are needed:
+without either, the online panel's `/stats` poll returns 404 and reports SERVER OFFLINE
+even when PM2 and the multiplayer server are healthy.
+
+After a routing change, verify `https://overrun.316123.nl/stats` returns JSON with
+room occupancy and phase, the ONLINE tab shows the room, and a `/ws` client receives
+a welcome and game snapshots. These routing changes do not require a PM2 restart.
 
 Point `ACCOUNTS_FILE` at an absolute path in an existing private, writable directory
 outside the checkout. Its default is `server/.accounts.json`. The file is loaded at
